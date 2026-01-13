@@ -12,34 +12,20 @@ const ClientInvoice = forwardRef(({ invoice }, ref) => {
 
   const frameworkRate =
     typeof pricing.frameRate === "number" ? pricing.frameRate : 0;
-
   const boxRate =
     typeof pricing.boxRate === "number" ? pricing.boxRate : frameworkRate * 1.4;
 
-  const useCurrentLocation = !!client.siteMapLink;
-
-  /* ========================================================= */
-  /* SAFE HELPERS                                              */
-  /* ========================================================= */
-
   const safeInputs = (inputs) => ({
-    // ceiling related
     surfaces: inputs?.surfaces || [],
     electricalWiring: inputs?.electricalWiring ?? 0,
     electricianCharges: inputs?.electricianCharges ?? 0,
     ceilingLights: inputs?.ceilingLights ?? 0,
     profileLights: inputs?.profileLights ?? 0,
-
-    // ceiling painting
     ceilingPaintingArea: inputs?.ceilingPaintingArea ?? 0,
     ceilingPaintingUnitPrice: inputs?.ceilingPaintingUnitPrice ?? 0,
     ceilingPaintingPrice: inputs?.ceilingPaintingPrice ?? 0,
-
-    // area based
     area: inputs?.area ?? 0,
     unitPrice: inputs?.unitPrice ?? 0,
-
-    // fixed
     price: inputs?.price ?? 0,
   });
 
@@ -75,411 +61,480 @@ const ClientInvoice = forwardRef(({ invoice }, ref) => {
       accessoriesTotal,
       itemsTotal,
       roomTotal,
+      accessories,
     };
   };
 
   const roomsTotals = rooms.map((room) => calcRoomAggregates(room));
-
   const roomsTotal = roomsTotals.reduce((sum, r) => sum + r.roomTotal, 0);
-
   const extrasTotal = extras.reduce(
     (sum, ex) => sum + Number(ex.total || 0),
     0
   );
-
   const grandTotal =
     typeof invoice.grandTotal === "number"
       ? invoice.grandTotal
       : roomsTotal + extrasTotal;
 
   const invoiceDate = invoice.createdAt
-    ? new Date(invoice.createdAt).toLocaleDateString()
+    ? new Date(invoice.createdAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
     : "";
 
   const invoiceIdShort = invoice._id
-    ? String(invoice._id).slice(-6).toUpperCase()
+    ? `INV-${String(invoice._id).slice(-6).toUpperCase()}`
     : "";
-
-  /* ========================================================= */
-  /* UI START                                                  */
-  /* ========================================================= */
 
   return (
     <div
       ref={ref}
-      className="mx-auto bg-white text-black p-6 text-sm border rounded-xl shadow"
-      style={{ width: "800px" }}
+      className="mx-auto bg-white text-black p-4 text-xs"
+      style={{
+        width: "800px",
+        fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
+      }}
     >
-      {/* ===================================================== */}
-      {/* COMPANY HEADER                                        */}
-      {/* ===================================================== */}
-      <header className="flex items-start justify-between border-b pb-4 mb-6">
-        <div className="flex items-center gap-4">
-          {/* Logo - update src to your actual logo path */}
-          <div className="h-16 w-16 rounded-full border flex items-center justify-center overflow-hidden bg-gray-100">
-            <img
-              src="/logo.png"
-              alt="Skanda Interiors Logo"
-              className="h-full w-full object-contain"
-              onError={(e) => {
-                // fallback if logo not found
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-wide">
-              Skanda Interiors
-            </h1>
-            <p className="text-xs mt-1 leading-snug max-w-md">
-              12-8-295, Opp: HP petrol pump, Santhoshimatha Temple Lane,
-              Warangal, Telangana (506002)
-            </p>
-            <p className="text-xs mt-1">
-              <span className="font-medium">Contact:</span> 9700360963,
-              9866565057, 9246893307, 779967762
-            </p>
-            <p className="text-xs">
-              <span className="font-medium">Email:</span>{" "}
-              interior.skanda@gmail.com
-            </p>
-          </div>
-        </div>
-
-        <div className="text-right text-xs">
-          <p className="text-lg font-semibold tracking-wide">
-            CLIENT QUOTATION
-          </p>
-          {invoiceIdShort && (
-            <p className="mt-1">
-              <span className="font-medium">Invoice No:</span> {invoiceIdShort}
-            </p>
-          )}
-          {invoiceDate && (
-            <p>
-              <span className="font-medium">Date:</span> {invoiceDate}
-            </p>
-          )}
-        </div>
-      </header>
-
-      {/* CLIENT DETAILS */}
-      <div className="border rounded-lg p-4 mb-6 bg-gray-50">
-        <h2 className="font-semibold text-lg mb-3">Client Details</h2>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p>
-              <span className="font-medium">Name:</span> {client.name || "—"}
-            </p>
-            <p>
-              <span className="font-medium">Mobile:</span>{" "}
-              {client.mobile || "—"}
-            </p>
-            <p>
-              <span className="font-medium">Email:</span> {client.email || "—"}
-            </p>
-          </div>
-          <div>
-            <p>
-              <span className="font-medium">Site Address:</span>{" "}
-              {client.siteAddress || "—"}
-            </p>
-            <p>
-              <span className="font-medium">Location URL:</span>{" "}
-              {useCurrentLocation && client.siteMapLink ? (
-                <a
-                  href={client.siteMapLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 underline break-all"
-                >
-                  {client.siteMapLink}
-                </a>
-              ) : (
-                "—"
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* PRICING SUMMARY */}
-      <div className="border rounded-lg p-4 mb-6 bg-blue-50">
-        <h2 className="font-semibold text-lg mb-2">Pricing Summary</h2>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <p>
-              <span className="font-medium">Global Frame Rate:</span>{" "}
-              {frameworkRate ? formatINR(frameworkRate) : "As per discussion"}
-            </p>
-            <p>
-              <span className="font-medium">Global Box Rate:</span>{" "}
-              {boxRate ? formatINR(boxRate) : "As per discussion"}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-600">
-              Room-wise totals below are derived from these rates and the final
-              design measurement for framework and boxwork.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ROOMS (summarised for client) */}
-      {rooms.map((room, idx) => {
-        const aggregates = roomsTotals[idx] || {};
-        const roomFrameRate =
-          typeof room.frameRate === "number" && !Number.isNaN(room.frameRate)
-            ? room.frameRate
-            : frameworkRate || 0;
-
-        const roomBoxRate =
-          typeof room.boxRate === "number" && !Number.isNaN(room.boxRate)
-            ? room.boxRate
-            : boxRate || roomFrameRate * 1.4;
-
-        return (
-          <div
-            key={idx}
-            className="border rounded-lg p-4 mb-4 bg-white shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-semibold text-sm">
-                  {room.name} - {room.description}
-                </h3>
+      {/* Header */}
+      <div className="border-b-2 border-gray-800 pb-3 mb-4">
+        <div className="flex justify-between items-start">
+          <div className="flex items-start gap-3">
+            {/* Logo Container */}
+            <div className="w-16 h-16 flex-shrink-0 mt-1">
+              <img
+                src={`${import.meta.env.VITE_API_BASE}/public/skanda-logo.png`}
+                alt="Skanda Industries Logo"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback if logo fails to load
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  parent.innerHTML = `
+              <div class="w-16 h-16 border border-gray-300 bg-gray-100 flex items-center justify-center">
+                <span class="text-xs font-bold text-gray-700">SKANDA</span>
               </div>
-              <div className="text-xs text-gray-700 text-right">
-                <div>
-                  <span className="font-medium">Room Frame Rate: </span>
-                  {roomFrameRate ? formatINR(roomFrameRate) : "—"}
-                </div>
-                <div>
-                  <span className="font-medium">Room Box Rate: </span>
-                  {roomBoxRate ? formatINR(roomBoxRate) : "—"}
-                </div>
-              </div>
+            `;
+                }}
+              />
             </div>
 
-            <table className="w-full text-xs border border-gray-200 rounded overflow-hidden">
-              <tbody>
-                <tr className="border-b">
-                  <td className="p-2 font-medium border-r w-1/2">
-                    Total Frame Work (sqft)
-                  </td>
-                  <td className="p-2 text-right">
-                    {aggregates.frameAreaTotal?.toFixed(2) || "0.00"}
-                  </td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium border-r">
-                    Total Box Work (sqft)
-                  </td>
-                  <td className="p-2 text-right">
-                    {aggregates.boxAreaTotal?.toFixed(2) || "0.00"}
-                  </td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium border-r">
-                    Roomwise Frame Price
-                  </td>
-                  <td className="p-2 text-right">
-                    {formatINR(aggregates.framePriceTotal || 0)}
-                  </td>
-                </tr>
-                <tr className="border-b">
-                  <td className="p-2 font-medium border-r">
-                    Roomwise Box Price
-                  </td>
-                  <td className="p-2 text-right">
-                    {formatINR(aggregates.boxPriceTotal || 0)}
-                  </td>
-                </tr>
-                {aggregates.accessoriesTotal > 0 && (
-                  <tr className="border-b">
-                    <td className="p-2 font-medium border-r">
-                      Accessories Total
-                    </td>
-                    <td className="p-2 text-right">
-                      {formatINR(aggregates.accessoriesTotal || 0)}
-                    </td>
-                  </tr>
-                )}
-                <tr>
-                  <td className="p-2 font-semibold border-r">
-                    Room Total (Frame + Box + Accessories)
-                  </td>
-                  <td className="p-2 text-right font-semibold">
-                    {formatINR(aggregates.roomTotal || 0)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                SKANDA INDUSTRIES
+              </h1>
+              <p className="text-[10px] text-gray-600 leading-tight mt-1">
+                <span className="font-medium">Regd Office:</span> H.No:
+                24-7-225-15/A/2, Phase - II, Near Euro Kids, Subedari,
+                Hanamkonda
+              </p>
+              <p className="text-[10px] text-gray-600">
+                <span className="font-medium">Industry:</span> Sy No. 138/A/1 &
+                138/2, Elkurthi Road, Grama Panchayat Office, Dharmasagar,
+                Elkurthy PD, Hanumakonda, Telangana - 506142
+              </p>
+              <p className="text-[10px] text-gray-600">
+                <span className="font-medium">Contact: </span>
+                9700360963, 9866565057, 9246893307, 779967762 |{" "}
+                <span className="font-medium">Email: </span>
+                industry.skanda@gmail.com
+              </p>
+            </div>
           </div>
-        );
-      })}
+        </div>
+      </div>
 
-      {/* EXTRAS - same rich view as admin */}
-      {extras.length > 0 && (
-        <div className="border rounded-lg p-4 mb-6">
-          <h2 className="text-lg font-semibold mb-2">Extras</h2>
+      {/* Client Details */}
+      <div className="mb-4">
+        <table className="w-full border-collapse text-[11px]">
+          <thead>
+            <tr className="bg-gray-100">
+              <th
+                colSpan="4"
+                className="p-1.5 text-left font-bold border border-gray-300"
+              >
+                CLIENT & INVOICE DETAILS
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                className="p-1.5 border border-gray-300 font-medium"
+                width="25%"
+              >
+                Client Name
+              </td>
+              <td className="p-1.5 border border-gray-300" width="25%">
+                {client.name || "—"}
+              </td>
+              <td
+                className="p-1.5 border border-gray-300 font-medium"
+                width="25%"
+              >
+                Invoice No
+              </td>
+              <td
+                className="p-1.5 border border-gray-300 font-semibold"
+                width="25%"
+              >
+                {invoiceIdShort || "—"}
+              </td>
+            </tr>
+            <tr>
+              <td className="p-1.5 border border-gray-300 font-medium">
+                Mobile
+              </td>
+              <td className="p-1.5 border border-gray-300">
+                {client.mobile || "—"}
+              </td>
+              <td className="p-1.5 border border-gray-300 font-medium">Date</td>
+              <td className="p-1.5 border border-gray-300">
+                {invoiceDate || "—"}
+              </td>
+            </tr>
+            <tr>
+              <td className="p-1.5 border border-gray-300 font-medium">
+                Email
+              </td>
+              <td className="p-1.5 border border-gray-300">
+                {client.email || "—"}
+              </td>
+              <td className="p-1.5 border border-gray-300 font-medium">
+                Site Address
+              </td>
+              <td className="p-1.5 border border-gray-300">
+                {client.siteAddress || "—"}
+              </td>
+            </tr>
+            {client.siteMapLink && (
+              <tr>
+                <td className="p-1.5 border border-gray-300 font-medium">
+                  Location Map
+                </td>
+                <td colSpan="3" className="p-1.5 border border-gray-300">
+                  <a
+                    href={client.siteMapLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-gray-700 underline"
+                  >
+                    {client.siteMapLink.length > 60
+                      ? client.siteMapLink.substring(0, 60) + "..."
+                      : client.siteMapLink}
+                  </a>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-          {extras.map((ex) => {
-            const inputs = safeInputs(ex.inputs || {});
-            const key = ex._id || ex.id || ex.key;
+      {/* Pricing Summary */}
+      <div className="mb-4">
+        <table className="w-full border-collapse text-[11px]">
+          <thead>
+            <tr className="bg-gray-100">
+              <th
+                colSpan="3"
+                className="p-1.5 text-left font-bold border border-gray-300"
+              >
+                PRICING RATES (per sqft)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                className="p-1.5 border border-gray-300 font-medium"
+                width="33%"
+              >
+                Frame Rate
+              </td>
+              <td
+                className="p-1.5 border border-gray-300 font-medium"
+                width="33%"
+              >
+                Box Rate
+              </td>
+              <td
+                className="p-1.5 border border-gray-300 font-medium"
+                width="34%"
+              >
+                Note
+              </td>
+            </tr>
+            <tr>
+              <td className="p-1.5 border border-gray-300 text-center">
+                {frameworkRate ? formatINR(frameworkRate) : "—"}
+              </td>
+              <td className="p-1.5 border border-gray-300 text-center">
+                {boxRate
+                  ? formatINR(boxRate)
+                  : frameworkRate
+                  ? formatINR(frameworkRate * 1.4)
+                  : "—"}
+              </td>
+              <td className="p-1.5 border border-gray-300 text-[10px] text-gray-600">
+                Room-specific prices may vary based on requirements.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Rooms Breakdown */}
+      {rooms.length > 0 && (
+        <div className="mb-4">
+          <h3 className="font-bold text-sm mb-2 border-b pb-1">
+            Roomwise Breakdown
+          </h3>
+          {rooms.map((room, idx) => {
+            const aggregates = roomsTotals[idx] || {};
+            const roomFrameRate =
+              typeof room.frameRate === "number" &&
+              !Number.isNaN(room.frameRate)
+                ? room.frameRate
+                : frameworkRate || 0;
+            const roomBoxRate =
+              typeof room.boxRate === "number" && !Number.isNaN(room.boxRate)
+                ? room.boxRate
+                : boxRate || roomFrameRate * 1.4;
 
             return (
-              <div key={key} className="mb-4 text-xs">
-                <h3 className="font-medium mb-1">{ex.label}</h3>
+              <div key={idx} className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium">
+                    {room.name} - {room.description}
+                  </h4>
+                </div>
 
-                {/* CEILING TYPE */}
-                {ex.type === "ceiling" && (
-                  <>
-                    {/* SURFACES */}
-                    <table className="w-full border text-xs border-collapse mb-2">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border p-1">Surface</th>
-                          <th className="border p-1">Area (sqft)</th>
-                          <th className="border p-1">Unit Price</th>
-                          <th className="border p-1">Surface Total</th>
+                {/* Main Room Items Table */}
+                <table className="w-full text-[10px] border mb-1">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border p-1 text-left w-2/5">
+                        Description
+                      </th>
+                      <th className="border p-1 text-right w-1/5">
+                        Area (sq.ft)
+                      </th>
+                      <th className="border p-1 text-right w-1/5">Rate</th>
+                      <th className="border p-1 text-right w-1/5">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border p-1">Frame Work</td>
+                      <td className="border p-1 text-right">
+                        {aggregates.frameAreaTotal?.toFixed(2) || "0.00"}
+                      </td>
+                      <td className="border p-1 text-right">
+                        {formatINR(roomFrameRate)}
+                      </td>
+                      <td className="border p-1 text-right font-medium">
+                        {formatINR(aggregates.framePriceTotal || 0)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1">Box Work</td>
+                      <td className="border p-1 text-right">
+                        {aggregates.boxAreaTotal?.toFixed(2) || "0.00"}
+                      </td>
+                      <td className="border p-1 text-right">
+                        {formatINR(roomBoxRate)}
+                      </td>
+                      <td className="border p-1 text-right font-medium">
+                        {formatINR(aggregates.boxPriceTotal || 0)}
+                      </td>
+                    </tr>
+                    <tr className="bg-gray-50">
+                      <td className="border p-1 font-bold" colSpan="3">
+                        Room Items Subtotal
+                      </td>
+                      <td className="border p-1 text-right font-bold">
+                        {formatINR(aggregates.itemsTotal || 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Accessories Table */}
+                {aggregates.accessories &&
+                  aggregates.accessories.length > 0 && (
+                    <table className="w-full text-[10px] border mb-1">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border p-1 text-left w-2/5">
+                            Accessory Name
+                          </th>
+                          <th className="border p-1 text-right w-1/5">
+                            Quantity
+                          </th>
+                          <th className="border p-1 text-right w-1/5">Rate</th>
+                          <th className="border p-1 text-right w-1/5">
+                            Amount
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(inputs.surfaces || []).map((s, i) => (
-                          <tr key={i}>
-                            <td className="border p-1">{s.label}</td>
-                            <td className="border p-1">{s.area}</td>
+                        {aggregates.accessories.map((accessory, accIdx) => (
+                          <tr key={accIdx}>
                             <td className="border p-1">
-                              {formatINR(s.unitPrice)}
+                              {accessory.name || "Accessory"}
                             </td>
-                            <td className="border p-1 font-semibold">
-                              {formatINR(s.price)}
+                            <td className="border p-1 text-right">
+                              {accessory.qty || 1}
+                            </td>
+                            <td className="border p-1 text-right">
+                              {formatINR(accessory.price || 0)}
+                            </td>
+                            <td className="border p-1 text-right font-medium">
+                              {formatINR(
+                                (accessory.price || 0) * (accessory.qty || 1)
+                              )}
                             </td>
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-
-                    {/* SLAB DETAILS */}
-                    <table className="w-full border text-xs border-collapse">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border p-1">Electrical Wiring</th>
-                          <th className="border p-1">Electrician Charges</th>
-                          <th className="border p-1">Ceiling Lights</th>
-                          <th className="border p-1">Profile Lights</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="border p-1">
-                            {formatINR(inputs.electricalWiring)}
+                        <tr className="bg-gray-50">
+                          <td className="border p-1 font-bold" colSpan="3">
+                            Accessories Total
                           </td>
-                          <td className="border p-1">
-                            {formatINR(inputs.electricianCharges)}
-                          </td>
-                          <td className="border p-1">
-                            {formatINR(inputs.ceilingLights)}
-                          </td>
-                          <td className="border p-1">
-                            {formatINR(inputs.profileLights)}
+                          <td className="border p-1 text-right font-bold">
+                            {formatINR(aggregates.accessoriesTotal || 0)}
                           </td>
                         </tr>
                       </tbody>
                     </table>
+                  )}
 
-                    {/* CEILING PAINTING DETAILS */}
-                    <table className="w-full border text-xs border-collapse mt-2">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="border p-1">Painting Area (sqft)</th>
-                          <th className="border p-1">Unit Price</th>
-                          <th className="border p-1">Painting Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="border p-1">
-                            {inputs.ceilingPaintingArea}
-                          </td>
-                          <td className="border p-1">
-                            {formatINR(inputs.ceilingPaintingUnitPrice)}
-                          </td>
-                          <td className="border p-1 font-semibold">
-                            {formatINR(inputs.ceilingPaintingPrice)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-
-                    <p className="text-right font-semibold mt-2">
-                      Ceiling Total: {formatINR(ex.total)}
-                    </p>
-                  </>
-                )}
-
-                {/* AREA BASED */}
-                {ex.type === "area_based" && (
-                  <table className="w-full border text-xs border-collapse">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="border p-1">Area (sqft)</th>
-                        <th className="border p-1">Unit Price</th>
-                        <th className="border p-1">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border p-1">{inputs.area}</td>
-                        <td className="border p-1">
-                          {formatINR(inputs.unitPrice)}
-                        </td>
-                        <td className="border p-1 font-semibold">
-                          {formatINR(ex.total)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                )}
-
-                {/* FIXED */}
-                {ex.type === "fixed" && (
-                  <table className="w-full border text-xs border-collapse">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="border p-1">Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border p-1 font-semibold">
-                          {formatINR(inputs.price)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                )}
+                {/* Room Total Row */}
+                <table className="w-full text-[10px] border">
+                  <tbody>
+                    <tr className="bg-gray-100">
+                      <td className="border p-1 font-bold" colSpan="3">
+                        Room Total (Items + Accessories)
+                      </td>
+                      <td className="border p-1 text-right font-bold">
+                        {formatINR(aggregates.roomTotal || 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             );
           })}
-
-          <p className="text-right font-bold text-sm mt-2">
-            Extras Total: {formatINR(extrasTotal)}
-          </p>
         </div>
       )}
 
-      {/* GRAND TOTAL */}
-      <div className="text-right text-lg font-bold border-t pt-4">
-        Grand Total: {formatINR(grandTotal)}
+      {/* Extras */}
+      {extras.length > 0 && (
+        <div className="mb-4">
+          <h3 className="font-bold text-sm mb-2 border-b pb-1">
+            Additional Services
+          </h3>
+          <table className="w-full text-[10px] border">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border p-1 text-left w-2/5">Description</th>
+                <th className="border p-1 text-right w-1/5">Quantity/Area</th>
+                <th className="border p-1 text-right w-1/5">Rate</th>
+                <th className="border p-1 text-right w-1/5">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {extras.map((ex) => {
+                const inputs = safeInputs(ex.inputs || {});
+                const key = ex._id || ex.id || ex.key;
+
+                return (
+                  <tr key={key}>
+                    <td className="border p-1">{ex.label}</td>
+                    <td className="border p-1 text-right">
+                      {ex.type === "ceiling"
+                        ? inputs.surfaces?.length || 1
+                        : ex.type === "area_based"
+                        ? `${inputs.area} sq.ft`
+                        : "Fixed"}
+                    </td>
+                    <td className="border p-1 text-right">
+                      {ex.type === "ceiling"
+                        ? "As per design"
+                        : ex.type === "area_based"
+                        ? formatINR(inputs.unitPrice)
+                        : formatINR(inputs.price)}
+                    </td>
+                    <td className="border p-1 text-right font-medium">
+                      {formatINR(ex.total)}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-gray-50">
+                <td className="border p-1 font-bold" colSpan="3">
+                  Extras Total
+                </td>
+                <td className="border p-1 text-right font-bold">
+                  {formatINR(extrasTotal)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Summary */}
+      <div className="mb-4">
+        <h3 className="font-bold text-sm mb-2 border-b pb-1">Summary</h3>
+        <table className="w-full text-[10px] border">
+          <tbody>
+            <tr>
+              <td className="border p-1 font-medium">Total Room Work</td>
+              <td className="border p-1 text-right">{formatINR(roomsTotal)}</td>
+            </tr>
+            {extrasTotal > 0 && (
+              <tr>
+                <td className="border p-1 font-medium">Additional Services</td>
+                <td className="border p-1 text-right">
+                  + {formatINR(extrasTotal)}
+                </td>
+              </tr>
+            )}
+            <tr className="bg-gray-100">
+              <td className="border p-1 font-bold">GRAND TOTAL</td>
+              <td className="border p-1 text-right font-bold text-base">
+                {formatINR(grandTotal)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <p className="mt-4 text-xs text-gray-500">
-        * This is a quotation / invoice for client reference. Final values may
-        vary based on site conditions and scope changes.
-      </p>
+      {/* Terms and Footer */}
+      <div className="mt-6 pt-4 border-t">
+        <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-600">
+          <div>
+            <p className="font-medium mb-1">Contact Details:</p>
+            <p>9700360963 | 9866565057 | 9246893307 | 779967762</p>
+            <p>interior.skanda@gmail.com</p>
+          </div>
+          <div>
+            <p className="font-medium mb-1">Terms:</p>
+            <ul className="list-disc list-inside">
+              <li>Quotation valid for 30 days</li>
+              <li>Final values based on site measurement</li>
+              <li>40% advance, 60% on completion</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-4 text-center text-[10px] text-gray-500">
+          <p>
+            Thank you for considering Skanda Interiors. We look forward to
+            serving you.
+          </p>
+        </div>
+      </div>
     </div>
   );
 });

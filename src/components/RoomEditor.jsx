@@ -1,5 +1,4 @@
-// RoomEditor.jsx — diversified (Frame + Box) implementation
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import ROOM_CONFIG_JSON from "../json/roomConfig.json";
 import { formatINR } from "../utils/calculations";
 
@@ -109,6 +108,9 @@ export default function RoomEditor({
   onChange = () => {},
   onRemoveRoom,
 }) {
+  const [collapsedItems, setCollapsedItems] = useState({});
+  const [isRoomCollapsed, setIsRoomCollapsed] = useState(false);
+
   // normalize
   const safeRoom = {
     name: room.name || "",
@@ -210,6 +212,13 @@ export default function RoomEditor({
     });
   };
 
+  const toggleItemCollapse = (index) => {
+    setCollapsedItems((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
   // -----------------------------------------
   // ACCESSORIES
   // -----------------------------------------
@@ -238,17 +247,38 @@ export default function RoomEditor({
     safeRoom.accessories.reduce((s, a) => s + a.price * a.qty, 0);
 
   // -----------------------------------------
-  // ENHANCED UI
+  // COMPACT, RESPONSIVE UI
   // -----------------------------------------
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm transition-all duration-200 overflow-hidden">
-      {/* Room Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+      {/* Room Header - Compact with Collapse */}
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1">
+            <button
+              onClick={() => setIsRoomCollapsed(!isRoomCollapsed)}
+              className="p-1 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded-lg transition-colors"
+            >
               <svg
-                className="w-5 h-5 text-white"
+                className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${
+                  isRoomCollapsed ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-4 h-4 text-white"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -261,159 +291,202 @@ export default function RoomEditor({
                 />
               </svg>
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-gray-800 dark:text-white truncate">
                 {safeRoom.name || "Untitled Room"}
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {safeRoom.description || "No description selected"}
-              </p>
+
+              {/* Desktop: Single line */}
+              <div className="hidden sm:block">
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  {safeRoom.description || "No description"} •{" "}
+                  <span className="font-medium">
+                    {safeRoom.items.length} items
+                  </span>{" "}
+                  •{" "}
+                  <span className="font-medium">
+                    {safeRoom.accessories.length} accessories
+                  </span>{" "}
+                  •{" "}
+                  <span className="font-semibold text-green-600 dark:text-green-400">
+                    {formatINR(roomTotal)}
+                  </span>
+                </p>
+              </div>
+
+              {/* Mobile: Vertical stack */}
+              <div className="sm:hidden space-y-0.5">
+                {/* Description */}
+                <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                  {safeRoom.description || "No description"}
+                </p>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                    {safeRoom.items.length} i
+                  </span>
+                  <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">
+                    {safeRoom.accessories.length} a
+                  </span>
+                  <span className=" font-semibold text-green-600 dark:text-green-400">
+                    {formatINR(roomTotal)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          <button
-            onClick={onRemoveRoom}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200 font-medium text-sm"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRemoveRoom}
+              className="p-2 sm:px-3 sm:py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-sm font-medium flex items-center justify-center"
+              title="Remove Room"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-            Remove Room
-          </button>
+              <svg
+                className="w-4 h-4 sm:mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              <span className="hidden sm:inline">Remove</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Room Configuration */}
-      <div className="p-6">
-        {/* Room Details & Rates */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Room Type
-            </label>
-            <select
-              value={safeRoom.name}
-              onChange={(e) =>
-                onChange({ ...safeRoom, name: e.target.value, description: "" })
-              }
-              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-            >
-              <option value="" className="text-gray-500">
-                Select Room Type
-              </option>
-              {ROOM_CONFIG.map((r) => (
-                <option
-                  key={r.name}
-                  value={r.name}
-                  className="text-gray-900 dark:text-white"
-                >
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
-            </label>
-            <select
-              value={safeRoom.description}
-              onChange={(e) =>
-                onChange({ ...safeRoom, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-            >
-              <option value="" className="text-gray-500">
-                Select Description
-              </option>
-              {(roomConfig.descriptions || []).map((d) => (
-                <option
-                  key={d}
-                  value={d}
-                  className="text-gray-900 dark:text-white"
-                >
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Frame Rate (₹/sqft)
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                ₹
-              </div>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={safeRoom.frameRate}
-                onChange={(e) => {
-                  const newFrame = Number(e.target.value || 0);
-                  onChange({
-                    ...safeRoom,
-                    frameRate: newFrame,
-                    boxRate: newFrame * 1.4, // room-wise auto sync
-                  });
-                }}
-                className="w-full pl-9 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Box Rate (₹/sqft)
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                ₹
-              </div>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={safeRoom.boxRate}
+      {/* Room Content - Collapsible */}
+      {!isRoomCollapsed && (
+        <div className="p-3">
+          {/* Room Configuration - Improved Alignment */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Room Type
+              </label>
+              <select
+                value={safeRoom.name}
                 onChange={(e) =>
                   onChange({
                     ...safeRoom,
-                    boxRate: Number(e.target.value || 0),
+                    name: e.target.value,
+                    description: "",
                   })
                 }
-                className="w-full pl-9 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-              />
+                className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white"
+              >
+                <option value="">Select Room Type</option>
+                {ROOM_CONFIG.map((r) => (
+                  <option key={r.name} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Default: 1.4× frame rate. Changing frame rate resets box rate.
-            </p>
-          </div>
-        </div>
 
-        {/* Items Section */}
-        <div className="space-y-4 mb-8">
-          <div className="flex items-center justify-between">
-            <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
-              Room Items ({safeRoom.items.length})
-            </h4>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <select
+                value={safeRoom.description}
+                onChange={(e) =>
+                  onChange({ ...safeRoom, description: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white"
+              >
+                <option value="">Select Description</option>
+                {(roomConfig.descriptions || []).map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Rates - Compact Side by Side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Frame Rate (₹/sqft)
+              </label>
+              <div className="relative">
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">
+                  ₹
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={safeRoom.frameRate}
+                  onChange={(e) => {
+                    const newFrame = Number(e.target.value || 0);
+                    onChange({
+                      ...safeRoom,
+                      frameRate: newFrame,
+                      boxRate: newFrame * 1.4,
+                    });
+                  }}
+                  className="w-full pl-7 pr-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Box Rate (₹/sqft)
+              </label>
+              <div className="relative">
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 text-sm">
+                  ₹
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={safeRoom.boxRate}
+                  onChange={(e) =>
+                    onChange({
+                      ...safeRoom,
+                      boxRate: Number(e.target.value || 0),
+                    })
+                  }
+                  className="w-full pl-7 pr-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Items Section Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-semibold text-gray-800 dark:text-white">
+                Items ({safeRoom.items.length})
+              </h4>
+              {safeRoom.items.length > 0 && (
+                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs">
+                  ₹
+                  {safeRoom.items
+                    .reduce((s, it) => s + it.totalPrice, 0)
+                    .toLocaleString()}
+                </span>
+              )}
+            </div>
             <button
               onClick={addItem}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3 h-3"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -429,407 +502,432 @@ export default function RoomEditor({
             </button>
           </div>
 
-          {safeRoom.items.map((item, i) => (
-            <div
-              key={i}
-              className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden"
-            >
-              {/* Item Header */}
-              <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-900/50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Item Type
-                    </label>
-                    <select
-                      value={item.name}
-                      onChange={(e) => updateItem(i, { name: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-                    >
-                      <option value="" className="text-gray-500">
-                        Select Item
-                      </option>
-                      {(roomConfig.items || []).map((opt) => (
-                        <option
-                          key={opt.name}
-                          value={opt.name}
-                          className="text-gray-900 dark:text-white"
-                        >
-                          {opt.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Item Total
-                      </div>
-                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                        {formatINR(item.totalPrice)}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeItem(i)}
-                      className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Frame & Box Dimensions */}
-              <div className="p-5 space-y-6">
-                {/* Frame Section */}
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-100 dark:border-blue-800/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 dark:bg-blue-400"></div>
-                    <h5 className="font-semibold text-blue-800 dark:text-blue-300">
-                      Frame Dimensions
-                    </h5>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Width (ft)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.frame.width}
-                        onChange={(e) =>
-                          updateItem(i, {
-                            frame: { width: Number(e.target.value) },
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Height (ft)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.frame.height}
-                        onChange={(e) =>
-                          updateItem(i, {
-                            frame: { height: Number(e.target.value) },
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Area
-                      </div>
-                      <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                        {item.frame.area.toFixed(2)} sqft
-                      </div>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Price
-                      </div>
-                      <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                        {formatINR(item.frame.price)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Box Section */}
-                <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-100 dark:border-green-800/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3 h-3 rounded-full bg-green-500 dark:bg-green-400"></div>
-                    <h5 className="font-semibold text-green-800 dark:text-green-300">
-                      Box Dimensions
-                    </h5>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Width (ft)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.box.width}
-                        onChange={(e) =>
-                          updateItem(i, {
-                            box: { width: Number(e.target.value) },
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Height (ft)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.box.height}
-                        onChange={(e) =>
-                          updateItem(i, {
-                            box: { height: Number(e.target.value) },
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Depth (ft)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.box.depth}
-                        onChange={(e) =>
-                          updateItem(i, {
-                            box: {
-                              depth:
-                                e.target.value === ""
-                                  ? ""
-                                  : Number(e.target.value),
-                            },
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Area
-                      </div>
-                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {item.box.area.toFixed(2)} sqft
-                      </div>
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Price
-                      </div>
-                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {formatINR(item.box.price)}
-                      </div>
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        onClick={() => removeItem(i)}
-                        className="w-full px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200 font-medium text-sm"
-                      >
-                        Remove Item
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Accessories Section */}
-        {roomConfig.accessories.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-semibold text-gray-800 dark:text-white">
-                Accessories ({safeRoom.accessories.length})
-              </h4>
-              <button
-                onClick={addAccessory}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                Add Accessory
-              </button>
-            </div>
-
-            {safeRoom.accessories.map((acc, i) => {
-              const total = acc.price * acc.qty;
-              return (
+          {/* Items List - Compact */}
+          {safeRoom.items.length > 0 ? (
+            <div className="space-y-2 mb-4">
+              {safeRoom.items.map((item, i) => (
                 <div
                   key={i}
-                  className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5"
+                  className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-visible"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Accessory
-                      </label>
-                      <select
-                        value={acc.name}
-                        onChange={(e) => {
-                          const selected = roomConfig.accessories.find(
-                            (a) => a.name === e.target.value
-                          );
-                          if (!selected) return;
-                          updateAccessory(i, {
-                            name: selected.name,
-                            price: selected.price,
-                          });
-                        }}
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:focus:ring-purple-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      >
-                        <option value="" className="text-gray-500">
-                          Select Accessory
-                        </option>
-                        {roomConfig.accessories.map((a) => (
-                          <option
-                            key={a.name}
-                            value={a.name}
-                            className="text-gray-900 dark:text-white"
+                  {/* Item Header */}
+                  <div
+                    className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer"
+                    onClick={() => toggleItemCollapse(i)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
+                        {/* Collapsed → Static name */}
+                        {collapsedItems[i] ? (
+                          <span className="flex-1 truncate text-sm font-medium text-gray-900 dark:text-white">
+                            {item.name || "Select Item"}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-0.5">
+                            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                              Item Name
+                            </label>
+                            <div className="relative group">
+                              <select
+                                value={item.name}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  updateItem(i, { name: e.target.value })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white appearance-none transition-all duration-300 ease-out focus:outline-none focus:border-transparent focus:shadow-[0_0_0_1px_rgba(59,130,246,0.35)] hover:border-blue-400"
+                              >
+                                <option value="">Select Item</option>
+                                {(roomConfig.items || []).map((opt) => (
+                                  <option key={opt.name} value={opt.name}>
+                                    {opt.name}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="absolute left-0 bottom-0 w-full h-[1.5px] bg-blue-500 scale-x-0 origin-left transition-transform duration-300 ease-out group-focus-within:scale-x-100"></span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            {formatINR(item.totalPrice)}
+                          </span>
+                          <svg
+                            className={`w-3 h-3 text-gray-500 transition-transform ${
+                              collapsedItems[i] ? "rotate-180" : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Price (₹)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                          ₹
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
                         </div>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={acc.price}
-                          onChange={(e) =>
-                            updateAccessory(i, {
-                              price: Number(e.target.value || 0),
-                            })
-                          }
-                          className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:focus:ring-purple-400 transition-all duration-200 text-gray-900 dark:text-white"
-                        />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                        Quantity
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={acc.qty}
-                        onChange={(e) =>
-                          updateAccessory(i, {
-                            qty: Number(e.target.value || 1),
-                          })
-                        }
-                        className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:focus:ring-purple-400 transition-all duration-200 text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    <div className="flex flex-col">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Total
-                      </div>
-                      <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
-                        {formatINR(total)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <button
-                        onClick={() => removeAccessory(i)}
-                        className="w-full px-4 py-2.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200 font-medium text-sm"
-                      >
-                        Remove
-                      </button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-5 text-center">
-            <svg
-              className="w-12 h-12 text-amber-400 dark:text-amber-500 mx-auto mb-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <h4 className="font-medium text-amber-800 dark:text-amber-300 mb-1">
-              No Accessories Available
-            </h4>
-            <p className="text-sm text-amber-700 dark:text-amber-400">
-              No accessories are configured for the{" "}
-              <strong>{safeRoom.name}</strong> room type.
-            </p>
-          </div>
-        )}
 
-        {/* Room Total */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h4 className="text-lg font-bold text-gray-800 dark:text-white">
-                Room Summary
-              </h4>
+                  {/* Item Content */}
+                  {!collapsedItems[i] && (
+                    <div className="p-3">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {/* Frame */}
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                Frame
+                              </span>
+                            </div>
+                            <div className="text-xs text-blue-600 dark:text-blue-400">
+                              {item.frame.area.toFixed(1)} sqft
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Width (ft)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.frame.width}
+                                onChange={(e) =>
+                                  updateItem(i, {
+                                    frame: { width: Number(e.target.value) },
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Height (ft)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.frame.height}
+                                onChange={(e) =>
+                                  updateItem(i, {
+                                    frame: { height: Number(e.target.value) },
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800/30">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Price:
+                              </span>
+                              <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                {formatINR(item.frame.price)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Box */}
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                              <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                                Box
+                              </span>
+                            </div>
+                            <div className="text-xs text-green-600 dark:text-green-400">
+                              {item.box.area.toFixed(1)} sqft
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Width (ft)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.box.width}
+                                onChange={(e) =>
+                                  updateItem(i, {
+                                    box: { width: Number(e.target.value) },
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Height (ft)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.box.height}
+                                onChange={(e) =>
+                                  updateItem(i, {
+                                    box: { height: Number(e.target.value) },
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Depth (ft)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.box.depth}
+                                onChange={(e) =>
+                                  updateItem(i, {
+                                    box: {
+                                      depth:
+                                        e.target.value === ""
+                                          ? ""
+                                          : Number(e.target.value),
+                                    },
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800/30">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Price:
+                              </span>
+                              <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                {formatINR(item.box.price)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Item Footer */}
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          Frame: {item.frame.area.toFixed(2)} sqft • Box:{" "}
+                          {item.box.area.toFixed(2)} sqft
+                        </div>
+                        <button
+                          onClick={() => removeItem(i)}
+                          className="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg mb-4">
+              <svg
+                className="w-8 h-8 text-gray-400 mx-auto mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {safeRoom.items.length} items • {safeRoom.accessories.length}{" "}
-                accessories
+                No items added yet
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                Room Total
+          )}
+
+          {/* Accessories Section */}
+          {roomConfig.accessories.length > 0 && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-gray-800 dark:text-white">
+                  Accessories ({safeRoom.accessories.length})
+                </h4>
+                <button
+                  onClick={addAccessory}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm transition-colors"
+                >
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Add
+                </button>
               </div>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+
+              {safeRoom.accessories.length > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {safeRoom.accessories.map((acc, i) => {
+                    const total = acc.price * acc.qty;
+                    return (
+                      <div
+                        key={i}
+                        className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800/30 rounded-lg p-3"
+                      >
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Accessory
+                            </label>
+                            <select
+                              value={acc.name}
+                              onChange={(e) => {
+                                const selected = roomConfig.accessories.find(
+                                  (a) => a.name === e.target.value
+                                );
+                                if (!selected) return;
+                                updateAccessory(i, {
+                                  name: selected.name,
+                                  price: selected.price,
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-white"
+                            >
+                              <option value="">Select Accessory</option>
+                              {roomConfig.accessories.map((a) => (
+                                <option key={a.name} value={a.name}>
+                                  {a.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Price
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={acc.price}
+                              onChange={(e) =>
+                                updateAccessory(i, {
+                                  price: Number(e.target.value || 0),
+                                })
+                              }
+                              className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                              Qty
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={acc.qty}
+                                onChange={(e) =>
+                                  updateAccessory(i, {
+                                    qty: Number(e.target.value || 1),
+                                  })
+                                }
+                                className="flex-1 px-2 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-white"
+                              />
+                              <button
+                                onClick={() => removeAccessory(i)}
+                                className="px-2 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-800/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                              Total:
+                            </span>
+                            <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                              {formatINR(total)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-3 bg-purple-50 dark:bg-purple-900/10 rounded-lg mb-4">
+                  <p className="text-sm text-purple-600 dark:text-purple-400">
+                    No accessories added
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Room Total */}
+          <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Room Total
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {safeRoom.items.length} items • {safeRoom.accessories.length}{" "}
+                  accessories
+                </div>
+              </div>
+              <div className="text-lg font-bold text-green-600 dark:text-green-400">
                 {formatINR(roomTotal)}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

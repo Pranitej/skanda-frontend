@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import ROOM_CONFIG from "../json/roomConfig";
 import { formatINR } from "../utils/calculations";
 
 export default function ExtrasEditor({ extras, setExtras }) {
   const extrasConfig = ROOM_CONFIG.extras || [];
+  const [collapsedExtras, setCollapsedExtras] = useState({});
 
   /* -----------------------------------------
       SAFE INPUT NORMALIZER
@@ -45,12 +46,12 @@ export default function ExtrasEditor({ extras, setExtras }) {
   };
 
   /* -----------------------------------------
-      CEILING CALCULATOR
+      CEILING CALCULATOR (FIXED)
   ----------------------------------------- */
   const computeCeilingFromSurfaces = (
     cfg,
     inputs,
-    { forceRecalcPaintingArea = false } = {}
+    { forceRecalcPaintingArea = false, updateFromSlab = false } = {}
   ) => {
     const surfaces = inputs.surfaces || [];
     const normalized = surfaces.map((s) => {
@@ -68,12 +69,14 @@ export default function ExtrasEditor({ extras, setExtras }) {
     const surfacePrice = normalized.reduce((t, s) => t + s.price, 0);
     const slab = findSlab(totalArea, cfg.slabs);
 
+    // Start with current values
     let wiring = Number(inputs.electricalWiring || 0);
     let charges = Number(inputs.electricianCharges || 0);
     let lights = Number(inputs.ceilingLights || 0);
     let profile = Number(inputs.profileLights || 0);
 
-    if (slab) {
+    // Only apply slab values if explicitly requested AND slab exists
+    if (updateFromSlab && slab) {
       wiring = Number(slab.electricalWiring || 0);
       charges = Number(slab.electricianCharges || 0);
       lights = Number(slab.ceilingLights || 0);
@@ -130,6 +133,13 @@ export default function ExtrasEditor({ extras, setExtras }) {
   /* -----------------------------------------
       HANDLERS
   ----------------------------------------- */
+  const toggleExtraCollapse = (id) => {
+    setCollapsedExtras((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const removeExtra = (id) => {
     setExtras(extras.filter((e) => e.id !== id));
   };
@@ -159,6 +169,7 @@ export default function ExtrasEditor({ extras, setExtras }) {
       }
       computed = computeCeilingFromSurfaces(cfg, inputs, {
         forceRecalcPaintingArea: true,
+        updateFromSlab: true,
       });
       inputs = computed.inputs;
       total = computed.total;
@@ -189,25 +200,33 @@ export default function ExtrasEditor({ extras, setExtras }) {
         if (ex.id !== id) return ex;
         const cfg = getExtraConfig(ex.key);
         let inputs = safeInputs(ex.inputs);
+        let updateFromSlab = false;
 
         if (ex.type === "ceiling") {
           let forceRecalcPaintingArea = false;
+
           if (type === "surface_area") {
             inputs.surfaces[value.index].area = value.area;
             forceRecalcPaintingArea = true;
+            updateFromSlab = true; // Update from slab when area changes
           }
+
           if (type === "surface_unitPrice") {
             inputs.surfaces[value.index].unitPrice = value.unitPrice;
           }
-          if (
-            [
-              "electricalWiring",
-              "electricianCharges",
-              "ceilingLights",
-              "profileLights",
-            ].includes(type)
-          ) {
-            inputs[type] = Number(value || 0);
+
+          // Direct field updates - these should NOT trigger slab recalculation
+          if (type === "electricalWiring") {
+            inputs.electricalWiring = Number(value || 0);
+          }
+          if (type === "electricianCharges") {
+            inputs.electricianCharges = Number(value || 0);
+          }
+          if (type === "ceilingLights") {
+            inputs.ceilingLights = Number(value || 0);
+          }
+          if (type === "profileLights") {
+            inputs.profileLights = Number(value || 0);
           }
           if (type === "paintingArea") {
             inputs.ceilingPaintingArea = Number(value || 0);
@@ -218,6 +237,7 @@ export default function ExtrasEditor({ extras, setExtras }) {
 
           const computed = computeCeilingFromSurfaces(cfg, inputs, {
             forceRecalcPaintingArea,
+            updateFromSlab,
           });
           return { ...ex, inputs: computed.inputs, total: computed.total };
         }
@@ -265,6 +285,7 @@ export default function ExtrasEditor({ extras, setExtras }) {
         });
         const computed = computeCeilingFromSurfaces(cfg, baseInputs, {
           forceRecalcPaintingArea: true,
+          updateFromSlab: true,
         });
         return { ...e, inputs: computed.inputs, total: computed.total };
       })
@@ -284,6 +305,7 @@ export default function ExtrasEditor({ extras, setExtras }) {
         });
         const computed = computeCeilingFromSurfaces(cfg, baseInputs, {
           forceRecalcPaintingArea: true,
+          updateFromSlab: true,
         });
         return { ...e, inputs: computed.inputs, total: computed.total };
       })
@@ -296,118 +318,87 @@ export default function ExtrasEditor({ extras, setExtras }) {
   );
 
   /* -----------------------------------------
-      ENHANCED UI
+      COMPACT, RESPONSIVE UI
   ----------------------------------------- */
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-              Additional Extras
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Add ceiling treatments, custom installations, or fixed-cost items
-            </p>
-          </div>
+    <div className="space-y-4">
+      {/* Header - Compact */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="w-full">
+          <h3 className="font-bold text-gray-800 dark:text-white">
+            Additional Extras
+          </h3>
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            Add ceiling treatments, custom installations, or fixed-cost items
+          </p>
+        </div>
 
-          {/* Add Extra Section */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Add Extra Item:
-              </label>
-            </div>
-            <select
-              className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-all duration-200 text-gray-900 dark:text-white min-w-[200px]"
-              onChange={(e) => {
-                handleSelectExtra(e.target.value);
-                e.target.value = "";
-              }}
-            >
-              <option value="" className="text-gray-500 dark:text-gray-400">
-                + Select an extra...
-              </option>
-              {extrasConfig.map((cfg) =>
-                extras.some((e) => e.key === cfg.key) ? null : (
-                  <option
-                    key={cfg.key}
-                    value={cfg.key}
-                    className="text-gray-900 dark:text-white"
-                  >
-                    {cfg.label}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
+        {/* Add Extra Dropdown */}
+        <div className="flex justify-end gap-2 w-full">
+          {/* Mobile: Full width, Desktop: Fixed width */}
+          <select
+            className="flex-1 min-w-0 px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-white sm:w-auto sm:flex-none sm:min-w-[200px]"
+            onChange={(e) => {
+              handleSelectExtra(e.target.value);
+              e.target.value = "";
+            }}
+          >
+            <option value="" className="text-gray-500 dark:text-gray-400">
+              + Add Extra
+            </option>
+            {extrasConfig.map((cfg) =>
+              extras.some((e) => e.key === cfg.key) ? null : (
+                <option key={cfg.key} value={cfg.key}>
+                  {cfg.label}
+                </option>
+              )
+            )}
+          </select>
         </div>
       </div>
 
       {/* Extras List */}
       {extras.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+          <svg
+            className="w-8 h-8 text-gray-400 mx-auto mb-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            />
+          </svg>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             No extras added yet
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Select an extra from the dropdown above to get started
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {extras.map((ex) => {
             const inputs = safeInputs(ex.inputs);
+            const isCollapsed = collapsedExtras[ex.id];
 
             return (
               <div
                 key={ex.id}
-                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md"
+                className="bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
               >
-                {/* Extra Header */}
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          ex.type === "ceiling"
-                            ? "bg-blue-500"
-                            : ex.type === "area_based"
-                            ? "bg-green-500"
-                            : "bg-purple-500"
-                        }`}
-                      ></div>
-                      <div>
-                        <h3 className="font-bold text-gray-800 dark:text-white">
-                          {ex.label}
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                          {ex.type.replace("_", " ")} • {formatINR(ex.total)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeExtra(ex.id)}
-                      className="inline-flex items-center px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors duration-200"
-                    >
+                {/* Extra Header with Collapse */}
+                <div
+                  className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer"
+                  onClick={() => toggleExtraCollapse(ex.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1">
                       <svg
-                        className="w-4 h-4 mr-1.5"
+                        className={`w-3 h-3 text-gray-500 transition-transform ${
+                          isCollapsed ? "rotate-180" : ""
+                        }`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -416,338 +407,362 @@ export default function ExtrasEditor({ extras, setExtras }) {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
+                          d="M19 9l-7 7-7-7"
                         />
                       </svg>
-                      Remove
-                    </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-gray-800 dark:text-white truncate">
+                            {ex.label}
+                          </h4>
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-xs ${
+                              ex.type === "ceiling"
+                                ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                                : ex.type === "area_based"
+                                ? "bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300"
+                                : "bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300"
+                            }`}
+                          >
+                            {ex.type.replace("_", " ")}
+                          </span>
+                        </div>
+                        {isCollapsed && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Total: {formatINR(ex.total)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                        {formatINR(ex.total)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeExtra(ex.id);
+                        }}
+                        className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Extra Content */}
-                <div className="p-6">
-                  {/* CEILING EXTRA */}
-                  {ex.type === "ceiling" && (
-                    <div className="space-y-6">
-                      {/* Add Surface Button */}
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-700 dark:text-gray-300">
-                          Ceiling Surfaces
-                        </h4>
-                        <select
-                          className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                          onChange={(e) => {
-                            if (!e.target.value) return;
-                            addSurfaceByClick(ex, e.target.value);
-                            e.target.value = "";
-                          }}
-                        >
-                          <option value="" className="text-gray-500">
-                            + Add Surface Type
-                          </option>
-                          {getExtraConfig("ceiling")
-                            ?.surfaces.filter(
-                              (s) =>
-                                !inputs.surfaces.some((u) => u.type === s.key)
-                            )
-                            .map((s) => (
-                              <option key={s.key} value={s.key}>
-                                {s.label}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-
-                      {/* Surface Cards */}
+                {/* Extra Content - Collapsible */}
+                {!isCollapsed && (
+                  <div className="p-3 space-y-3">
+                    {/* CEILING EXTRA */}
+                    {ex.type === "ceiling" && (
                       <div className="space-y-3">
-                        {inputs.surfaces.map((s, index) => (
-                          <div
-                            key={index}
-                            className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                        {/* Add Surface Button */}
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Ceiling Surfaces
+                          </h5>
+                          <select
+                            className="px-2 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              addSurfaceByClick(ex, e.target.value);
+                              e.target.value = "";
+                            }}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-800 dark:text-white">
+                            <option value="" className="text-gray-500">
+                              + Add Surface
+                            </option>
+                            {getExtraConfig("ceiling")
+                              ?.surfaces.filter(
+                                (s) =>
+                                  !inputs.surfaces.some((u) => u.type === s.key)
+                              )
+                              .map((s) => (
+                                <option key={s.key} value={s.key}>
                                   {s.label}
-                                </span>
-                                <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
-                                  Surface {index + 1}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => removeSurface(ex, index)}
-                                className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 inline-flex items-center"
-                              >
-                                <svg
-                                  className="w-3 h-3 mr-1"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+
+                        {/* Surface Cards */}
+                        <div className="space-y-2">
+                          {inputs.surfaces.map((s, index) => (
+                            <div
+                              key={index}
+                              className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-2"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-gray-800 dark:text-white">
+                                    {s.label}
+                                  </span>
+                                  <span className="text-[10px] px-1 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                                    Surface {index + 1}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => removeSurface(ex, index)}
+                                  className="text-[10px] text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
+                                  Remove
+                                </button>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-[11px] text-gray-600 dark:text-gray-400 mb-1">
+                                    Area (sqft)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500"
+                                    value={s.area}
+                                    onChange={(e) =>
+                                      updateField(ex.id, "surface_area", {
+                                        index,
+                                        area: Number(e.target.value),
+                                      })
+                                    }
                                   />
-                                </svg>
-                                Remove Surface
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                  Area (sqft)
-                                </label>
-                                <input
-                                  type="number"
-                                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                                  value={s.area}
-                                  onChange={(e) =>
-                                    updateField(ex.id, "surface_area", {
-                                      index,
-                                      area: Number(e.target.value),
-                                    })
-                                  }
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                  Unit Price (₹/sqft)
-                                </label>
-                                <input
-                                  type="number"
-                                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                                  value={s.unitPrice}
-                                  onChange={(e) =>
-                                    updateField(ex.id, "surface_unitPrice", {
-                                      index,
-                                      unitPrice: Number(e.target.value),
-                                    })
-                                  }
-                                />
-                              </div>
-
-                              <div className="flex flex-col justify-end">
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                  Surface Total
                                 </div>
-                                <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-                                  {formatINR(s.price)}
+
+                                <div>
+                                  <label className="block text-[11px] text-gray-600 dark:text-gray-400 mb-1">
+                                    Unit Price
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500"
+                                    value={s.unitPrice}
+                                    onChange={(e) =>
+                                      updateField(ex.id, "surface_unitPrice", {
+                                        index,
+                                        unitPrice: Number(e.target.value),
+                                      })
+                                    }
+                                  />
+                                </div>
+
+                                <div className="sm:col-span-1 col-span-2 flex justify-between items-center sm:block">
+                                  <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                    Subtotal:
+                                  </div>
+                                  <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                                    {formatINR(s.price)}
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                          ))}
+                        </div>
+
+                        {/* Electrical & Lighting Section */}
+                        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded p-3">
+                          <h5 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
+                            Electrical & Lighting
+                          </h5>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                              {
+                                key: "electricalWiring",
+                                label: "Wiring",
+                              },
+                              {
+                                key: "electricianCharges",
+                                label: "Electrician",
+                              },
+                              { key: "ceilingLights", label: "Ceiling Lights" },
+                              { key: "profileLights", label: "Profile Lights" },
+                            ].map(({ key, label }) => (
+                              <div key={key}>
+                                <label className="block text-[11px] text-gray-600 dark:text-gray-400 mb-1">
+                                  {label}
+                                </label>
+                                <input
+                                  type="number"
+                                  className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500"
+                                  value={inputs[key]}
+                                  onChange={(e) =>
+                                    updateField(
+                                      ex.id,
+                                      key,
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                />
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
 
-                      {/* Slab Charges Grid */}
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-lg p-4">
-                        <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-3">
-                          Electrical & Lighting Charges
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {[
-                            {
-                              key: "electricalWiring",
-                              label: "Electrical Wiring",
-                            },
-                            {
-                              key: "electricianCharges",
-                              label: "Electrician Charges",
-                            },
-                            { key: "ceilingLights", label: "Ceiling Lights" },
-                            { key: "profileLights", label: "Profile Lights" },
-                          ].map(({ key, label }) => (
-                            <div key={key}>
-                              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                {label}
+                        {/* Ceiling Painting Section */}
+                        <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded p-3">
+                          <h5 className="text-sm font-medium text-green-700 dark:text-green-300 mb-2">
+                            Ceiling Painting
+                          </h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[11px] text-gray-600 dark:text-gray-400 mb-1">
+                                Painting Area (sqft)
                               </label>
                               <input
                                 type="number"
-                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                                value={inputs[key]}
+                                className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500"
+                                value={inputs.ceilingPaintingArea}
                                 onChange={(e) =>
                                   updateField(
                                     ex.id,
-                                    key,
+                                    "paintingArea",
                                     Number(e.target.value)
                                   )
                                 }
                               />
                             </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* Ceiling Painting */}
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/30 rounded-lg p-4">
-                        <h4 className="font-medium text-green-800 dark:text-green-300 mb-3">
-                          Ceiling Painting
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                              Painting Area (sqft)
-                            </label>
-                            <input
-                              type="number"
-                              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200"
-                              value={inputs.ceilingPaintingArea}
-                              onChange={(e) =>
-                                updateField(
-                                  ex.id,
-                                  "paintingArea",
-                                  Number(e.target.value)
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                              Unit Price (₹/sqft)
-                            </label>
-                            <input
-                              type="number"
-                              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200"
-                              value={inputs.ceilingPaintingUnitPrice}
-                              onChange={(e) =>
-                                updateField(
-                                  ex.id,
-                                  "paintingUnitPrice",
-                                  Number(e.target.value)
-                                )
-                              }
-                            />
-                          </div>
-
-                          <div className="flex flex-col justify-end">
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                              Painting Total
+                            <div>
+                              <label className="block text-[11px] text-gray-600 dark:text-gray-400 mb-1">
+                                Unit Price
+                              </label>
+                              <input
+                                type="number"
+                                className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-green-500"
+                                value={inputs.ceilingPaintingUnitPrice}
+                                onChange={(e) =>
+                                  updateField(
+                                    ex.id,
+                                    "paintingUnitPrice",
+                                    Number(e.target.value)
+                                  )
+                                }
+                              />
                             </div>
-                            <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-                              {formatINR(inputs.ceilingPaintingPrice || 0)}
+
+                            <div className="flex justify-between items-center sm:block">
+                              <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                Painting:
+                              </div>
+                              <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                                {formatINR(inputs.ceilingPaintingPrice || 0)}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* AREA BASED EXTRA */}
-                  {ex.type === "area_based" && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Area (sqft)
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200"
-                          value={inputs.area}
-                          onChange={(e) =>
-                            updateField(ex.id, "area", Number(e.target.value))
-                          }
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Unit Price (₹/sqft)
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:focus:ring-green-400 transition-all duration-200"
-                          value={inputs.unitPrice}
-                          onChange={(e) =>
-                            updateField(
-                              ex.id,
-                              "unitPrice",
-                              Number(e.target.value)
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="flex flex-col justify-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          Calculated Total
+                    {/* AREA BASED EXTRA */}
+                    {ex.type === "area_based" && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Area (sqft)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                            value={inputs.area}
+                            onChange={(e) =>
+                              updateField(ex.id, "area", Number(e.target.value))
+                            }
+                          />
                         </div>
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {formatINR(ex.total)}
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* FIXED EXTRA */}
-                  {ex.type === "fixed" && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Fixed Price
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
-                          value={inputs.price}
-                          onChange={(e) =>
-                            updateField(ex.id, "price", Number(e.target.value))
-                          }
-                        />
-                      </div>
-
-                      <div className="flex flex-col justify-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          Item Total
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Unit Price
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-green-500 focus:border-green-500"
+                            value={inputs.unitPrice}
+                            onChange={(e) =>
+                              updateField(
+                                ex.id,
+                                "unitPrice",
+                                Number(e.target.value)
+                              )
+                            }
+                          />
                         </div>
-                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                          {formatINR(ex.total)}
+
+                        <div className="flex flex-col justify-center">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Calculated Total
+                          </div>
+                          <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                            {formatINR(ex.total)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
 
-                {/* Extra Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Extra Item Total
-                    </span>
-                    <span className="text-xl font-bold text-gray-800 dark:text-white">
-                      {formatINR(ex.total)}
-                    </span>
+                    {/* FIXED EXTRA */}
+                    {ex.type === "fixed" && (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Fixed Price
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-1 focus:ring-purple-500 focus:border-purple-500"
+                            value={inputs.price}
+                            onChange={(e) =>
+                              updateField(
+                                ex.id,
+                                "price",
+                                Number(e.target.value)
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="flex flex-col justify-center">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            Item Total
+                          </div>
+                          <div className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                            {formatINR(ex.total)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Grand Total */}
+      {/* Extras Total Summary */}
       {extras.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 dark:from-gray-800 dark:to-gray-900 border border-blue-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
-                Extras Grand Total
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Sum of all additional extras
-              </p>
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Extras Total
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {extras.length} {extras.length === 1 ? "extra" : "extras"}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                Total Items: {extras.length}
-              </div>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                {formatINR(extrasTotal)}
-              </div>
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              {formatINR(extrasTotal)}
             </div>
           </div>
         </div>

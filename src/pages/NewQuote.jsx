@@ -8,10 +8,10 @@ import api from "../api/api";
 import { AuthContext } from "../context/AuthContext";
 import ROOM_CONFIG from "../json/roomConfig";
 import PricingSection from "../components/PricingSection";
+import AdminInvoice from "../components/AdminInvoice";
 
 const DRAFT_KEY = "invoice_draft";
 
-// Get default dimensions for items
 function getItemDefaults(roomName, itemName) {
   const globalDefaults = ROOM_CONFIG.defaultDimensions || {
     height: 8.5,
@@ -45,14 +45,12 @@ export default function NewQuote() {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
-  // Refs
   const prevIdRef = useRef(id);
   const isEditingRef = useRef(!!id);
   const isLoadingDraftRef = useRef(false);
   const draftRestoredRef = useRef(false);
   const userEditedGlobalRateRef = useRef(false);
 
-  // State
   const [client, setClient] = useState({
     name: "",
     mobile: "",
@@ -70,16 +68,26 @@ export default function NewQuote() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
-  /* ==================
-        AUTH REDIRECT
-  ==================== */
+  // Collapsed states for each section
+  const [collapsedSections, setCollapsedSections] = useState({
+    client: false,
+    pricing: false,
+    rooms: false,
+    extras: false,
+    preview: true,
+  });
+
+  const toggleSection = (section) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
   useEffect(() => {
     if (!user) navigate("/");
   }, [user, navigate]);
 
-  /* ==================
-        LOAD DRAFT
-  ==================== */
   useEffect(() => {
     if (!id && !draftLoaded && user) {
       isLoadingDraftRef.current = true;
@@ -110,9 +118,6 @@ export default function NewQuote() {
     }
   }, [id, draftLoaded, user]);
 
-  /* ==============================
-        RESET WHEN SWITCHING MODE
-  =============================== */
   useEffect(() => {
     if (isEditingRef.current && !id && prevIdRef.current && !id) {
       setClient({
@@ -134,9 +139,6 @@ export default function NewQuote() {
     isEditingRef.current = !!id;
   }, [id]);
 
-  /* ============================
-        LOAD EXISTING INVOICE
-  ============================= */
   useEffect(() => {
     if (!id || !user) return;
 
@@ -208,9 +210,6 @@ export default function NewQuote() {
     fetchInvoice();
   }, [id, user, navigate]);
 
-  /* ================================
-        AUTO SAVE DRAFT (NEW ONLY)
-  ================================= */
   useEffect(() => {
     if (id || isLoadingDraftRef.current) return;
 
@@ -240,17 +239,12 @@ export default function NewQuote() {
     id,
   ]);
 
-  /* ======================================================
-        GLOBAL RATES CHANGE → OVERWRITE ROOM RATES
-  ======================================================= */
   useEffect(() => {
-    // Skip once after draft restore
     if (draftRestoredRef.current) {
       draftRestoredRef.current = false;
       return;
     }
 
-    // Skip initial load on edit mode (until user changes)
     if (id && !userEditedGlobalRateRef.current) return;
 
     setRooms((prev) =>
@@ -262,9 +256,6 @@ export default function NewQuote() {
     );
   }, [globalFrameRate, globalBoxRate, id]);
 
-  /* ====================
-        ROOM HANDLERS
-  ===================== */
   const addRoom = () =>
     setRooms((p) => [
       ...p,
@@ -287,9 +278,6 @@ export default function NewQuote() {
       return copy;
     });
 
-  /* ====================
-        TOTALS FUNCTION
-  ===================== */
   const computeGrandTotal = () => {
     const roomsTotal = rooms.reduce((sum, r) => {
       const items = (r.items || []).reduce(
@@ -311,9 +299,6 @@ export default function NewQuote() {
     return roomsTotal + extrasTotal;
   };
 
-  /* ====================
-        SAVE INVOICE
-  ===================== */
   const buildPayload = () => ({
     client,
     pricing: {
@@ -375,9 +360,6 @@ export default function NewQuote() {
     }
   };
 
-  /* =========================
-     SAVE AS NEW INVOICE (POST)
-  ========================= */
   const handleSaveAsNewInvoice = async () => {
     if (!client.siteAddress.trim()) {
       alert("Site address is required to save the invoice.");
@@ -409,9 +391,6 @@ export default function NewQuote() {
     }
   };
 
-  /* =========================
-        CLEAR DRAFT HANDLER
-  ========================= */
   const handleClearDraft = () => {
     if (
       !confirm(
@@ -438,36 +417,18 @@ export default function NewQuote() {
     setTimeout(() => setSaveStatus(null), 2000);
   };
 
-  /* =========================
-          UI RENDER
-  ========================= */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="relative mb-8">
-            <div className="w-20 h-20 border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <svg
-                className="w-8 h-8 text-blue-500 dark:text-blue-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
+          <div className="relative mb-4">
+            <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin"></div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-2">
             {id ? "Loading Invoice..." : "Loading Quote Builder..."}
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            {id ? "Fetching invoice details..." : "Preparing your workspace..."}
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {id ? "Fetching invoice details..." : "Preparing workspace..."}
           </p>
         </div>
       </div>
@@ -477,15 +438,18 @@ export default function NewQuote() {
   const grandTotal = computeGrandTotal();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br">
-      {/* Header */}
-      <div className="sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24">
+      {/* Compact Sticky Header */}
+      <div className="sticky top-0 rounded-lg bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-40 shadow-sm">
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              {/* <button
+                onClick={() => navigate("/history")}
+                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
                 <svg
-                  className="w-6 h-6 text-white"
+                  className="w-5 h-5 text-gray-600 dark:text-gray-300"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -494,52 +458,33 @@ export default function NewQuote() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
                   />
                 </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-                  {id
-                    ? `Edit Invoice #${id.substring(0, 8)}...`
-                    : "Create New Quote"}
+              </button> */}
+              <div className="flex-1 min-w-0">
+                <h1 className="text-base font-bold text-gray-800 dark:text-white truncate">
+                  {id ? `Editing #${id.substring(0, 6)}...` : "New Quote"}
                 </h1>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {rooms.length} room{rooms.length !== 1 ? "s" : ""}
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {extrasState.length} extra
-                    {extrasState.length !== 1 ? "s" : ""}
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"></span>
-                  <span
-                    className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                      id
-                        ? "bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20 text-amber-700 dark:text-amber-300"
-                        : "bg-gradient-to-r from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 text-green-700 dark:text-green-300"
-                    }`}
-                  >
-                    {id ? "Edit Mode" : "New Quote"}
+                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span>{rooms.length} rooms</span>
+                  <span>•</span>
+                  <span>{extrasState.length} extras</span>
+                  <span>•</span>
+                  <span className="font-medium text-green-600 dark:text-green-400">
+                    ₹{grandTotal.toLocaleString()}
                   </span>
                 </div>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Total Estimate
-                </div>
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  ₹{grandTotal.toLocaleString()}
-                </div>
-              </div>
-              <button
-                onClick={() => navigate("/history")}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-gray-800 to-gray-700 dark:from-gray-700 dark:to-gray-600 hover:from-gray-900 hover:to-gray-800 dark:hover:from-gray-600 dark:hover:to-gray-500 text-white rounded-xl transition-all duration-300 shadow-sm hover:shadow-md font-medium"
-              >
+            <button
+              onClick={handleSaveInvoice}
+              disabled={isLoading || !client.siteAddress.trim()}
+              className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
                 <svg
                   className="w-4 h-4"
                   fill="none"
@@ -550,343 +495,230 @@ export default function NewQuote() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    d="M5 13l4 4L19 7"
                   />
                 </svg>
-                Back to History
-              </button>
-            </div>
+              )}
+              <span className="hidden xs:inline">{id ? "Update" : "Save"}</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Status Messages */}
       {saveStatus && (
-        <div className={`fixed top-20 right-4 z-50 max-w-sm animate-fade-in`}>
+        <div className="fixed top-12 left-2 right-2 sm:left-auto sm:right-4 sm:max-w-sm z-50">
           <div
-            className={`rounded-xl p-4 shadow-lg border ${
+            className={`rounded-lg p-3 shadow-lg border text-sm ${
               saveStatus.type === "success"
-                ? "bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20 border-green-200 dark:border-green-800/30"
+                ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300"
                 : saveStatus.type === "error"
-                ? "bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/20 border-red-200 dark:border-red-800/30"
+                ? "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
                 : saveStatus.type === "loading"
-                ? "bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 border-blue-200 dark:border-blue-800/30"
-                : "bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 border-amber-200 dark:border-amber-800/30"
+                ? "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+                : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300"
             }`}
           >
-            <div className="flex items-center gap-3">
-              {saveStatus.type === "loading" ? (
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              ) : saveStatus.type === "success" ? (
-                <svg
-                  className="w-5 h-5 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              ) : saveStatus.type === "error" ? (
-                <svg
-                  className="w-5 h-5 text-red-600 dark:text-red-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5 text-amber-600 dark:text-amber-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+            <div className="flex items-center gap-2">
+              {saveStatus.type === "loading" && (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
               )}
-              <p
-                className={`font-medium ${
-                  saveStatus.type === "success"
-                    ? "text-green-700 dark:text-green-300"
-                    : saveStatus.type === "error"
-                    ? "text-red-700 dark:text-red-300"
-                    : saveStatus.type === "loading"
-                    ? "text-blue-700 dark:text-blue-300"
-                    : "text-amber-700 dark:text-amber-300"
-                }`}
-              >
-                {saveStatus.message}
-              </p>
+              <p className="font-medium">{saveStatus.message}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-3 space-y-6">
-        {/* CLIENT SECTION */}
-        <ClientSection
-          client={client}
-          setClient={setClient}
-          useCurrentLocation={useCurrentLocation}
-          setUseCurrentLocation={setUseCurrentLocation}
-          onClearDraft={handleClearDraft}
-          canClearDraft={!id}
-        />
-
-        {/* PRICING SECTION */}
-        <PricingSection
-          globalFrameRate={globalFrameRate}
-          globalBoxRate={globalBoxRate}
-          onChangeFrameRate={(value) => {
-            userEditedGlobalRateRef.current = true;
-            setGlobalFrameRate(value);
-            setGlobalBoxRate(value * 1.4);
-          }}
-          onChangeBoxRate={(value) => {
-            userEditedGlobalRateRef.current = true;
-            setGlobalBoxRate(value);
-          }}
-        />
-
-        {/* ROOMS SECTION */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-                  Rooms & Items
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Add and configure rooms with their respective items
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-1.5 bg-gradient-to-r from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
-                  {rooms.length} room{rooms.length !== 1 ? "s" : ""}
-                </div>
-                <button
-                  onClick={addRoom}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Add Room
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {rooms.length > 0 ? (
-              rooms.map((room, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow duration-200"
-                >
-                  <RoomEditor
-                    room={room}
-                    getItemDefaults={getItemDefaults}
-                    onChange={(updated) => updateRoom(index, updated)}
-                    onRemoveRoom={() => removeRoom(index)}
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-12 bg-gradient-to-b from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  No rooms added yet
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                  Start by adding your first room to begin your quote
-                </p>
-                <button
-                  onClick={addRoom}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 shadow-sm hover:shadow-md"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                  Add First Room
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* EXTRAS SECTION */}
-        <ExtrasEditor extras={extrasState} setExtras={setExtrasState} />
-
-        {/* PREVIEW SECTION */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-              Invoice Preview
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Review your quote before finalizing
-            </p>
-          </div>
-          <div className="p-6">
-            <InvoicePreview
-              client={client}
-              rooms={rooms}
-              frameworkRate={globalFrameRate}
-              boxRate={globalBoxRate}
-              useCurrentLocation={useCurrentLocation}
-              extras={extrasState}
-            />
-          </div>
-        </div>
-
-        {/* ACTION BUTTONS */}
-        <div className="bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div>
-              <h3 className="font-bold text-gray-800 dark:text-white">
-                {id ? "Update Invoice" : "Save Quote"}
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {id
-                  ? "Update the invoice or save it as a new quote"
-                  : "Save this quote as an invoice"}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {id ? (
-                <>
-                  <button
-                    onClick={handleSaveInvoice}
-                    disabled={isLoading}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl transition-all duration-300 shadow-sm hover:shadow-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    )}
-                    Update Invoice
-                  </button>
-
-                  <button
-                    onClick={handleSaveAsNewInvoice}
-                    disabled={isLoading}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all duration-300 shadow-sm hover:shadow-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                      />
-                    </svg>
-                    Save As New Invoice
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleSaveInvoice}
-                  disabled={isLoading || !client.siteAddress.trim()}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                      />
-                    </svg>
-                  )}
-                  Save Invoice
-                </button>
-              )}
-
-              <button
-                onClick={() => navigate("/history")}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-800 to-gray-700 dark:from-gray-700 dark:to-gray-600 hover:from-gray-900 hover:to-gray-800 dark:hover:from-gray-600 dark:hover:to-gray-500 text-white rounded-xl transition-all duration-300 shadow-sm hover:shadow-md font-medium"
+      {/* Main Content - Vertical Stack */}
+      <div className="p-0 pt-3  mx-auto space-y-3">
+        {/* Client Section Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div
+            className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection("client")}
+          >
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-blue-600 dark:text-blue-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              <h2 className="font-bold text-gray-800 dark:text-white">
+                Client Information
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
+                Required
+              </span>
+              <svg
+                className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                  collapsedSections.client ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {!collapsedSections.client && (
+            <div className="p-3">
+              <ClientSection
+                client={client}
+                setClient={setClient}
+                useCurrentLocation={useCurrentLocation}
+                setUseCurrentLocation={setUseCurrentLocation}
+                onClearDraft={handleClearDraft}
+                canClearDraft={!id}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Pricing Section Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div
+            className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection("pricing")}
+          >
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-green-600 dark:text-green-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h2 className="font-bold text-gray-800 dark:text-white">
+                Pricing Rates
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                <span className="font-medium">Frame: ₹{globalFrameRate}</span>
+                <span className="mx-2">•</span>
+                <span className="font-medium">Box: ₹{globalBoxRate}</span>
+              </div>
+              <svg
+                className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                  collapsedSections.pricing ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {!collapsedSections.pricing && (
+            <div className="p-3">
+              <PricingSection
+                globalFrameRate={globalFrameRate}
+                globalBoxRate={globalBoxRate}
+                onChangeFrameRate={(value) => {
+                  userEditedGlobalRateRef.current = true;
+                  setGlobalFrameRate(value);
+                  setGlobalBoxRate(value * 1.4);
+                }}
+                onChangeBoxRate={(value) => {
+                  userEditedGlobalRateRef.current = true;
+                  setGlobalBoxRate(value);
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Rooms Section Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div
+            className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection("rooms")}
+          >
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-purple-600 dark:text-purple-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+              <h2 className="font-bold text-gray-800 dark:text-white">
+                Rooms & Items
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
+              </span>
+              <div className="flex items-center gap-2">
+                {rooms.length === 0 ? (
+                  <span className="text-xs px-2 py-1 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded-full">
+                    Add rooms
+                  </span>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addRoom();
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add Room
+                  </button>
+                )}
                 <svg
-                  className="w-5 h-5"
+                  className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                    collapsedSections.rooms ? "rotate-180" : ""
+                  }`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -895,13 +727,324 @@ export default function NewQuote() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    d="M19 9l-7 7-7-7"
                   />
                 </svg>
-                Cancel
-              </button>
+              </div>
             </div>
           </div>
+
+          {!collapsedSections.rooms && (
+            <div className="p-3 space-y-3">
+              {rooms.length > 0 ? (
+                rooms.map((room, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-200 dark:border-gray-700 rounded-lg"
+                  >
+                    <RoomEditor
+                      room={room}
+                      getItemDefaults={getItemDefaults}
+                      onChange={(updated) => updateRoom(index, updated)}
+                      onRemoveRoom={() => removeRoom(index)}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-purple-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    No rooms added yet
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    Start by adding your first room
+                  </p>
+                  <button
+                    onClick={addRoom}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add First Room
+                  </button>
+                </div>
+              )}
+
+              {rooms.length > 0 && (
+                <button
+                  onClick={addRoom}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Add Another Room
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Extras Section Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div
+            className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection("extras")}
+          >
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-amber-600 dark:text-amber-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              <h2 className="font-bold text-gray-800 dark:text-white">
+                Additional Extras
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {extrasState.length}{" "}
+                {extrasState.length === 1 ? "extra" : "extras"}
+              </span>
+              <svg
+                className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                  collapsedSections.extras ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {!collapsedSections.extras && (
+            <div className="p-3">
+              <ExtrasEditor extras={extrasState} setExtras={setExtrasState} />
+            </div>
+          )}
+        </div>
+
+        {/* Preview Section Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div
+            className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection("preview")}
+          >
+            <div className="flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-indigo-600 dark:text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h2 className="font-bold text-gray-800 dark:text-white">
+                Invoice Preview
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                ₹{grandTotal.toLocaleString()}
+              </span>
+              <svg
+                className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${
+                  collapsedSections.preview ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {!collapsedSections.preview && (
+            <div className="p-3">
+              <div className="w-full overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="min-w-[210mm]">
+                  <AdminInvoice
+                    invoice={{
+                      client,
+                      pricing: {
+                        frameRate: globalFrameRate,
+                        boxRate: globalBoxRate,
+                      },
+                      rooms,
+                      extras: extrasState,
+                      grandTotal,
+                      createdBy: "admin",
+                      role: "admin",
+                      createdAt: new Date().toISOString(),
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sticky Bottom Action Bar - Only shown on mobile */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg p-3 z-50 lg:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Grand Total
+            </div>
+            <div className="text-lg font-bold text-green-600 dark:text-green-400">
+              ₹{grandTotal.toLocaleString()}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/history")}
+              className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+
+            {id ? (
+              <>
+                <button
+                  onClick={handleSaveAsNewInvoice}
+                  disabled={isLoading}
+                  className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  Save New
+                </button>
+                <button
+                  onClick={handleSaveInvoice}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? "Saving..." : "Update"}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleSaveInvoice}
+                disabled={isLoading || !client.siteAddress.trim()}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Saving..." : "Save Invoice"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop Action Buttons */}
+      <div className="hidden lg:block fixed bottom-6 right-6 z-40">
+        <div className="flex flex-col gap-2">
+          {id && (
+            <button
+              onClick={handleSaveAsNewInvoice}
+              disabled={isLoading}
+              className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Save as New
+            </button>
+          )}
+          <button
+            onClick={handleSaveInvoice}
+            disabled={isLoading || !client.siteAddress.trim()}
+            className="px-5 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {isLoading ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
+            {id ? "Update Invoice" : "Save Invoice"}
+          </button>
         </div>
       </div>
     </div>
