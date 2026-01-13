@@ -68,13 +68,13 @@ export default function Login() {
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg flex items-center justify-center">
-            <span className="text-3xl font-bold text-white">Q</span>
+            <span className="text-3xl font-bold text-white">S</span>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-            QuoteBuilder
+            Skanda Industries
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Professional quoting system for contractors
+            Professional quoting system
           </p>
         </div>
 
@@ -160,13 +160,13 @@ export default function Login() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Password
                   </label>
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200"
                   >
                     {showPassword ? "Hide Password" : "Show Password"}
-                  </button>
+                  </button> */}
                 </div>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
@@ -274,7 +274,7 @@ export default function Login() {
               </button>
 
               {/* Demo Credentials (Optional) */}
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-900/30 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+              {/* <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-900/30 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <svg
                     className="w-4 h-4 text-gray-500 dark:text-gray-400"
@@ -304,17 +304,17 @@ export default function Login() {
                     </code>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </form>
           </div>
 
           {/* Card Footer */}
           <div className="px-8 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              <span>Need help?</span>
-              <button className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 font-medium">
+              <span>Developed by Vangala Pranitej for Skanda Industries</span>
+              {/* <button className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 font-medium">
                 Contact Support
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
