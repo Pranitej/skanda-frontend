@@ -2,89 +2,32 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ===========================
-   PRINT ENGINE – A4 LOCK
-   =========================== */
-
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 10mm;
 }
 
 @media print {
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  html,
   body {
-    width: 210mm !important;
-    height: 297mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
     background: white !important;
   }
 
-  /* Main printable root */
+  /* Apply serif only to printable invoice */
   #print-root {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    min-width: 210mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
     font-family: "Georgia", "Times New Roman", serif !important;
-    letter-spacing: 0.2px;
-    line-height: 1.45;
   }
 
-  /* Single page */
+  /* Let browser manage page size, just prevent shrinking */
   .print-page {
-    width: 210mm !important;
-    min-height: 297mm !important;
-    max-width: 210mm !important;
-    padding: 12mm;
-    box-sizing: border-box;
-    page-break-after: always;
-    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
-  /* Typography scale */
-  #print-root h1 {
-    font-size: 18pt !important;
-    font-weight: 700 !important;
-  }
-  #print-root h2 {
-    font-size: 13pt !important;
-    font-weight: 700 !important;
-  }
-  #print-root h3 {
-    font-size: 11pt !important;
-    font-weight: 600 !important;
-  }
-  #print-root table {
-    font-size: 10pt !important;
-  }
-  #print-root .totals {
-    font-size: 12pt !important;
-    font-weight: 700 !important;
-  }
-  #print-root .small {
-    font-size: 8pt !important;
-  }
-
-  /* Prevent content cutting */
-  #print-root table,
-  #print-root tr,
-  #print-root td,
-  #print-root th,
-  #print-root .room-block {
+  /* Do not break important blocks */
+  .room-block,
+  table,
+  tr {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-
-  /* Hide non-print UI */
-  body > *:not(#print-root) {
-    display: none !important;
   }
 }

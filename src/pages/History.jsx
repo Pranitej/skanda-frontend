@@ -174,7 +174,7 @@ export default function History() {
       {/* Hidden Print Mount */}
       <div className="hidden print:block">
         <div id="print-root">
-          <div ref={printRef} className="print-page">
+          <div ref={printRef} className="print-page w-full">
             {printInvoice &&
               (printType === "admin" ? (
                 <AdminInvoice invoice={printInvoice} />
