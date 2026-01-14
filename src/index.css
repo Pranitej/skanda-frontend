@@ -2,31 +2,62 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ===============================
+   GLOBAL BASE
+   =============================== */
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background-color: #f9fafb;
+}
+
+/* ===============================
+   PRINT ENGINE – SAFE VERSION
+   =============================== */
+
 @page {
   size: A4 portrait;
   margin: 10mm;
 }
 
 @media print {
+
   body {
     background: white !important;
   }
 
-  /* Apply serif only to printable invoice */
+  /* Mobile-safe isolation: hide everything */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Only printable invoice visible */
+  #print-root,
+  #print-root * {
+    visibility: visible !important;
+  }
+
+  /* Lock printable position */
   #print-root {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    background: white;
     font-family: "Georgia", "Times New Roman", serif !important;
   }
 
-  /* Let browser manage page size, just prevent shrinking */
+  /* Full width page */
   .print-page {
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  /* Do not break important blocks */
-  .room-block,
+  /* Prevent bad page breaks */
   table,
-  tr {
+  tr,
+  .room-block {
     break-inside: avoid;
     page-break-inside: avoid;
   }
