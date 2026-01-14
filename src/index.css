@@ -14,7 +14,7 @@ body {
 }
 
 /* ===============================
-   PRINT ENGINE – SAFE VERSION
+   PRINT ENGINE – FINAL SAFE VERSION
    =============================== */
 
 @page {
@@ -23,38 +23,30 @@ body {
 }
 
 @media print {
-
   body {
     background: white !important;
   }
 
-  /* Mobile-safe isolation: hide everything */
-  body * {
-    visibility: hidden !important;
+  /* Hide the whole React UI */
+  #root {
+    display: none !important;
   }
 
-  /* Only printable invoice visible */
-  #print-root,
-  #print-root * {
-    visibility: visible !important;
-  }
-
-  /* Lock printable position */
+  /* Re-enable printable invoice only */
   #print-root {
-    position: absolute;
-    inset: 0;
+    display: block !important;
     width: 100% !important;
     background: white;
     font-family: "Georgia", "Times New Roman", serif !important;
   }
 
-  /* Full width page */
+  /* Single page full width */
   .print-page {
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  /* Prevent bad page breaks */
+  /* Prevent broken rows */
   table,
   tr,
   .room-block {
