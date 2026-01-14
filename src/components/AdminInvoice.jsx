@@ -88,7 +88,7 @@ const AdminInvoice = forwardRef(function AdminInvoice({ invoice }, ref) {
   return (
     <div
       ref={ref}
-      className="mx-auto bg-white p-4 text-xs"
+      className=" bg-white p-4 text-xs w-full max-w-none min-w-full"
       style={{ maxWidth: "210mm" }}
     >
       {/* Header */}

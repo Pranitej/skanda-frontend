@@ -1,12 +1,11 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 import api from "../api/api";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { formatINR } from "../utils/calculations";
-import { renderToStaticMarkup } from "react-dom/server";
 import AdminInvoice from "../components/AdminInvoice";
 import ClientInvoice from "../components/ClientInvoice";
-import { exportHtmlToPdf } from "../utils/exportHtmlPdf";
+import { useReactToPrint } from "react-to-print";
 
 export default function History() {
   const { user } = useContext(AuthContext);
@@ -14,8 +13,16 @@ export default function History() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [printInvoice, setPrintInvoice] = useState(null);
+  const [printType, setPrintType] = useState("admin");
+  const printRef = useRef(null);
+
   const navigate = useNavigate();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: "Skanda Invoice",
+  });
 
   useEffect(() => {
     (async () => {
@@ -42,48 +49,11 @@ export default function History() {
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
 
-  const handleDownload = async (id, type) => {
-    try {
-      setIsDownloading(true);
-
-      const invoice = (await api.get(`/invoices/${id}`)).data;
-      const Component = type === "admin" ? AdminInvoice : ClientInvoice;
-
-      const html = `<!DOCTYPE html>
-       <html>
-       <head>
-         <meta charset="utf-8"/>
-         <script src="https://cdn.tailwindcss.com"></script>
-       </head>
-       <body>${renderToStaticMarkup(<Component invoice={invoice} />)}</body>
-       </html>`;
-
-      exportHtmlToPdf(html, `Skanda-${type}-Invoice-${id.slice(-6)}.pdf`);
-
-      // alert(type);
-
-      // const res = await api.post(
-      //   "/pdf/render",
-      //   { html },
-      //   { responseType: "blob" }
-      // );
-
-      // const blob = new Blob([res.data], { type: "application/pdf" });
-      // const url = window.URL.createObjectURL(blob);
-
-      // const a = document.createElement("a");
-      // a.href = url;
-      // a.download = `Skanda-${type}-Invoice-${id.slice(-6)}.pdf`;
-      // document.body.appendChild(a);
-      // a.click();
-      // a.remove();
-      // URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert("PDF generation failed");
-    } finally {
-      setIsDownloading(false);
-    }
+  const triggerPrint = async (id, type) => {
+    const invoice = (await api.get(`/invoices/${id}`)).data;
+    setPrintType(type);
+    setPrintInvoice(invoice);
+    setTimeout(() => handlePrint(), 100);
   };
 
   const handleDelete = async (id) => {
@@ -156,23 +126,26 @@ export default function History() {
                     >
                       Client
                     </button>
+
                     <button
                       onClick={() => navigate(`/invoices/admin/${inv._id}`)}
                       className="text-green-600"
                     >
                       Admin
                     </button>
+
                     <button
-                      onClick={() => handleDownload(inv._id, "client")}
+                      onClick={() => triggerPrint(inv._id, "admin")}
                       className="text-indigo-600"
                     >
-                      Client PDF
+                      Print Admin
                     </button>
+
                     <button
-                      onClick={() => handleDownload(inv._id, "admin")}
-                      className="text-purple-600"
+                      onClick={() => triggerPrint(inv._id, "client")}
+                      className="text-teal-600"
                     >
-                      Admin PDF
+                      Print Client
                     </button>
                     {user?.isAdmin && (
                       <>
@@ -198,14 +171,19 @@ export default function History() {
         </div>
       )}
 
-      {isDownloading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded shadow text-center">
-            <p className="font-bold mb-2">Generating PDF…</p>
-            <p>Please wait</p>
+      {/* Hidden Print Mount */}
+      <div className="hidden print:block">
+        <div id="print-root">
+          <div ref={printRef} className="print-page">
+            {printInvoice &&
+              (printType === "admin" ? (
+                <AdminInvoice invoice={printInvoice} />
+              ) : (
+                <ClientInvoice invoice={printInvoice} />
+              ))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

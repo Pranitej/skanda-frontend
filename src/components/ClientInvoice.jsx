@@ -91,7 +91,7 @@ const ClientInvoice = forwardRef(({ invoice }, ref) => {
   return (
     <div
       ref={ref}
-      className="mx-auto bg-white text-black p-4 text-xs"
+      className="bg-white text-black p-4 text-xs w-full max-w-none min-w-full"
       style={{
         width: "800px",
         fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
