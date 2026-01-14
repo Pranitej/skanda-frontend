@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react"; 
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { AuthContext } from "../context/AuthContext";
@@ -311,7 +311,7 @@ export default function Login() {
           {/* Card Footer */}
           <div className="px-8 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-              {/* <span>Developed by Vangala Pranitej for Skanda Industries</span> */}
+              <span>Developed by Vangala Pranitej for Skanda Industries</span>
               {/* <button className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 font-medium">
                 Contact Support
               </button> */}
@@ -342,5 +342,3 @@ export default function Login() {
     </div>
   );
 }
-
-

@@ -6,6 +6,7 @@ import { formatINR } from "../utils/calculations";
 import { renderToStaticMarkup } from "react-dom/server";
 import AdminInvoice from "../components/AdminInvoice";
 import ClientInvoice from "../components/ClientInvoice";
+import { exportHtmlToPdf } from "../utils/exportHtmlPdf";
 
 export default function History() {
   const { user } = useContext(AuthContext);
@@ -48,24 +49,35 @@ export default function History() {
       const invoice = (await api.get(`/invoices/${id}`)).data;
       const Component = type === "admin" ? AdminInvoice : ClientInvoice;
 
-      const html = renderToStaticMarkup(<Component invoice={invoice} />);
+      const html = `<!DOCTYPE html>
+       <html>
+       <head>
+         <meta charset="utf-8"/>
+         <script src="https://cdn.tailwindcss.com"></script>
+       </head>
+       <body>${renderToStaticMarkup(<Component invoice={invoice} />)}</body>
+       </html>`;
 
-      const res = await api.post(
-        "/pdf/render",
-        { html },
-        { responseType: "blob" }
-      );
+      exportHtmlToPdf(html, `Skanda-${type}-Invoice-${id.slice(-6)}.pdf`);
 
-      const blob = new Blob([res.data], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
+      // alert(type);
 
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Skanda-${type}-Invoice-${id.slice(-6)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // const res = await api.post(
+      //   "/pdf/render",
+      //   { html },
+      //   { responseType: "blob" }
+      // );
+
+      // const blob = new Blob([res.data], { type: "application/pdf" });
+      // const url = window.URL.createObjectURL(blob);
+
+      // const a = document.createElement("a");
+      // a.href = url;
+      // a.download = `Skanda-${type}-Invoice-${id.slice(-6)}.pdf`;
+      // document.body.appendChild(a);
+      // a.click();
+      // a.remove();
+      // URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
       alert("PDF generation failed");

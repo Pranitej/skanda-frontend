@@ -98,7 +98,7 @@ const AdminInvoice = forwardRef(function AdminInvoice({ invoice }, ref) {
             {/* Logo Container */}
             <div className="w-16 h-16 flex-shrink-0 mt-1">
               <img
-                src={`${import.meta.env.VITE_API_BASE}/public/skanda-logo.png`}
+                src={`skanda-logo.png`}
                 alt="Skanda Industries Logo"
                 className="w-full h-full object-contain"
                 onError={(e) => {
